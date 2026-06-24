@@ -112,11 +112,11 @@ function StudentDashboardPage() {
                 className="content-card overflow-hidden p-0"
               >
                 <div className="grid gap-0 xl:grid-cols-[280px_minmax(0,1fr)]">
-                  <div className="min-h-56 bg-slate-100">
+                  <div className="flex h-72 items-center justify-center bg-slate-100 p-4 xl:h-full">
                     <img
                       src={opportunity.imageUrl}
                       alt={opportunity.title}
-                      className="h-full w-full object-cover"
+                      className="max-h-full max-w-full object-contain"
                     />
                   </div>
 
