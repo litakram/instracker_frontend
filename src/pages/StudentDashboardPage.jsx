@@ -8,13 +8,16 @@ function StudentDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [consultingId, setConsultingId] = useState(null)
+  const [showAllOpportunities, setShowAllOpportunities] = useState(false)
 
   useEffect(() => {
     loadOpportunities()
-  }, [])
+  }, [showAllOpportunities])
 
   const metrics = {
     total: opportunities.length,
+    active: opportunities.filter((opportunity) => !opportunity.isExpired).length,
+    ended: opportunities.filter((opportunity) => opportunity.isExpired).length,
     consulted: opportunities.filter(
       (opportunity) => opportunity.tracking?.status === 'consulted',
     ).length,
@@ -26,7 +29,11 @@ function StudentDashboardPage() {
     try {
       setLoading(true)
       setErrorMessage('')
-      const response = await api.get('/opportunities')
+      const response = await api.get('/opportunities', {
+        params: {
+          includeExpired: showAllOpportunities,
+        },
+      })
       setOpportunities(response.data.opportunities)
     } catch (error) {
       setErrorMessage(extractApiError(error, 'Could not load the opportunity feed.'))
@@ -70,32 +77,57 @@ function StudentDashboardPage() {
     <div className="space-y-4">
       <section className="stack-grid">
         <div className="panel-card">
-          <p className="metric-label">Active feed</p>
+          <p className="metric-label">{showAllOpportunities ? 'Visible feed' : 'Active feed'}</p>
           <p className="metric-value">{metrics.total}</p>
-          <p className="metric-note">Active opportunities.</p>
+          <p className="metric-note">
+            {showAllOpportunities ? 'All published opportunities.' : 'Active opportunities.'}
+          </p>
         </div>
         <div className="panel-card">
-          <p className="metric-label">Consulted</p>
-          <p className="mt-3 text-3xl font-semibold text-blue-700">{metrics.consulted}</p>
-          <p className="metric-note">Opened items.</p>
+          <p className="metric-label">{showAllOpportunities ? 'Active now' : 'Consulted'}</p>
+          <p className="mt-3 text-3xl font-semibold text-blue-700">
+            {showAllOpportunities ? metrics.active : metrics.consulted}
+          </p>
+          <p className="metric-note">
+            {showAllOpportunities ? 'Upcoming opportunities.' : 'Opened items.'}
+          </p>
         </div>
         <div className="panel-card">
-          <p className="metric-label">Applied</p>
-          <p className="mt-3 text-3xl font-semibold text-emerald-700">{metrics.applied}</p>
-          <p className="metric-note">Applied items.</p>
+          <p className="metric-label">{showAllOpportunities ? 'Ended' : 'Applied'}</p>
+          <p className="mt-3 text-3xl font-semibold text-emerald-700">
+            {showAllOpportunities ? metrics.ended : metrics.applied}
+          </p>
+          <p className="metric-note">
+            {showAllOpportunities ? 'Past deadlines.' : 'Applied items.'}
+          </p>
         </div>
       </section>
 
       <section className="panel-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="eyebrow">Nearest deadlines first</p>
+            <p className="eyebrow">
+              {showAllOpportunities ? 'All opportunities' : 'Nearest deadlines first'}
+            </p>
             <h3 className="section-heading">Opportunity feed</h3>
-            <p className="section-copy">Consult is saved before the link opens.</p>
+            <p className="section-copy">
+              {showAllOpportunities
+                ? 'Active items stay first. Ended ones are listed after them.'
+                : 'Consult is saved before the link opens.'}
+            </p>
           </div>
-          <Link className="secondary-btn" to="/student/tracking">
-            Open my tracking board
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => setShowAllOpportunities((current) => !current)}
+            >
+              {showAllOpportunities ? 'Show active only' : 'Show all opportunities'}
+            </button>
+            <Link className="secondary-btn" to="/student/tracking">
+              Open my tracking board
+            </Link>
+          </div>
         </div>
 
         {errorMessage ? <div className="message-error mt-6">{errorMessage}</div> : null}
@@ -104,7 +136,11 @@ function StudentDashboardPage() {
           {loading ? (
             <div className="surface-subtle">Loading opportunities...</div>
           ) : opportunities.length === 0 ? (
-            <div className="surface-subtle">No active opportunities are published yet.</div>
+            <div className="surface-subtle">
+              {showAllOpportunities
+                ? 'No opportunities are published yet.'
+                : 'No active opportunities are published yet.'}
+            </div>
           ) : (
             opportunities.map((opportunity) => (
               <article
@@ -125,8 +161,13 @@ function StudentDashboardPage() {
                       <div className="max-w-3xl">
                         <div className="flex flex-wrap items-center gap-3">
                           <h4 className="text-2xl font-semibold text-slate-900">{opportunity.title}</h4>
-                          <span className="status-pill status-consulted">
-                            Deadline {formatDate(opportunity.deadline)}
+                          <span
+                            className={`status-pill ${
+                              opportunity.isExpired ? 'status-ended' : 'status-consulted'
+                            }`}
+                          >
+                            {opportunity.isExpired ? 'Ended ' : 'Deadline '}
+                            {formatDate(opportunity.deadline)}
                           </span>
                           {opportunity.tracking ? (
                             <span
